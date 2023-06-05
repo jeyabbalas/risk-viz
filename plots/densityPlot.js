@@ -2,8 +2,6 @@ import {
     extent,
     scaleLinear,
     mean,
-    bin,
-    max,
     line,
     curveBasis,
     transition,
@@ -22,7 +20,8 @@ export function densityPlot() {
     let xLabel;
     let title;
     let yMax;
-    let vLine;
+    let vLines;
+    let vLineColor = 'red';
     let numBins = 40;
     let bandwidth;
     let color = 'rgb(122, 255, 248, 0.7)';
@@ -37,15 +36,6 @@ export function densityPlot() {
 
     const kde = (kernel, thresholds, data) => {
         return thresholds.map(t => [t, mean(data, d => kernel(t - d))]);
-    };
-
-    const estimateYMax = (x, thresholds, data) => {
-        const bins = bin()
-            .domain(x.domain())
-            .thresholds(thresholds)
-            (data);
-
-        return max(bins, d => d.length) / data.length;
     };
 
     const densityPlot = (selection) => {
@@ -198,17 +188,17 @@ export function densityPlot() {
             .text(xLabel)
             .style('font-size', fontSize * (3 / 4));
 
-        if (vLine !== undefined) {
+        if (vLines !== undefined) {
             svg
-                .selectAll('.vLine')
-                .data([null])
+                .selectAll('.vLines')
+                .data(vLines)
                 .join('line')
-                .attr('class', 'vLine')
-                .attr('x1', x(vLine))
+                .attr('class', 'vLines')
+                .attr('x1', d => x(d))
                 .attr('y1', y(0))
-                .attr('x2', x(vLine))
+                .attr('x2', d => x(d))
                 .attr('y2', y(yMaxValue))
-                .attr('stroke', 'red')
+                .attr('stroke', vLineColor)
                 .attr('stroke-width', 1.5)
                 .attr('stroke-linejoin', 'round')
                 .attr('opacity', opacity);
@@ -261,8 +251,12 @@ export function densityPlot() {
         return arguments.length ? ((yMax = +_), densityPlot) : yMax;
     }
 
-    densityPlot.vLine = function (_) {
-        return arguments.length ? ((vLine = +_), densityPlot) : vLine;
+    densityPlot.vLines = function (_) {
+        return arguments.length ? ((vLines = _), densityPlot) : vLines;
+    }
+
+    densityPlot.vLineColor = function (_) {
+        return arguments.length ? ((vLineColor = _), densityPlot) : vLineColor;
     }
 
     densityPlot.numBins = function (_) {
@@ -294,4 +288,18 @@ export function densityPlot() {
     }
 
     return densityPlot;
+}
+
+
+export function getBandwidthValues(numBandwidths, data) {
+    const bandwidthValues = [];
+    const bandwidthMin = 0.001 * (Math.max(...data) - Math.min(...data));
+    const bandwidthMax = Math.max(...data) - Math.min(...data);
+
+    for (let i = 0; i < numBandwidths; i++) {
+        const logBandwidth = Math.log10(bandwidthMin) + ((Math.log10(bandwidthMax) - Math.log10(bandwidthMin)) * i) / (numBandwidths - 1);
+        bandwidthValues.push(Math.pow(10, logBandwidth));
+    }
+
+    return bandwidthValues;
 }
