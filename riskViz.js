@@ -1,0 +1,1 @@
+import {slider, densityPlot, boxPlot, beeswarmPlot, populationPrevalencePlot} from './plots';
