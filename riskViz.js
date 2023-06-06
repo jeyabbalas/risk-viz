@@ -5,7 +5,8 @@ import {
     boxPlot,
     beeswarmPlot,
     populationPrevalencePlot,
-    linePlot
+    linePlot,
+    calibrationPlot
 } from './plots';
 
 export {
@@ -15,5 +16,6 @@ export {
     boxPlot,
     beeswarmPlot,
     populationPrevalencePlot,
-    linePlot
+    linePlot,
+    calibrationPlot
 };

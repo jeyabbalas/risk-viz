@@ -4,3 +4,4 @@ export * from './densityPlot.js';
 export * from './beeswarmPlot.js';
 export * from './populationPrevalencePlot.js';
 export * from './linePlot.js';
+export * from './calibrationPlot.js';
