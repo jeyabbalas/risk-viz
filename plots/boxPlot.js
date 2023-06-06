@@ -2,8 +2,9 @@ import {
     extent,
     scaleLinear,
     quantile,
-    min,
-    max,
+    min as d3Min,
+    max as d3Max,
+    pointer,
     axisBottom,
 } from 'd3';
 
@@ -15,7 +16,8 @@ export function boxPlot() {
     let data;
     let xMin;
     let xMax;
-    let vLine;
+    let vLines;
+    let vLineColor = 'red';
     let xLabel;
     let title;
     let boxWidth;
@@ -51,33 +53,33 @@ export function boxPlot() {
         const q2 = quantile(data, 0.5);
         const q3 = quantile(data, 0.75);
         const iqr = q3 - q1;
-        let q0 = q1 - iqr * 1.5;
-        const dataMin = min(data);
-        q0 = dataMin > q0 ? dataMin : q0;
-        let q4 = q3 + iqr * 1.5;
-        const dataMax = max(data);
-        q4 = dataMax < q4 ? dataMax : q4;
-        const outliers = data.filter(d => (d < q0) || (d > q4));
+        let min = q1 - iqr * 1.5;
+        const dataMin = d3Min(data);
+        min = dataMin > min ? dataMin : min;
+        let max = q3 + iqr * 1.5;
+        const dataMax = d3Max(data);
+        max = dataMax < max ? dataMax : max;
+        const outliers = data.filter(d => (d < min) || (d > max));
         const mean = data.reduce((a, b) => a + b, 0) / data.length;
 
         const tooltip = selection.selectAll('div.tooltip')
             .data([null])
             .join('div')
-            .attr('class', 'p-2 text-white rounded-md border border-white border-opacity-50 shadow-sm pointer-events-none -translate-x-[40%] -translate-y-[75%] font-sans text-xs bg-black bg-opacity-60 transition-opacity duration-200 ease-out transition-border-color duration-100 ease-out backdrop-blur-md')
+            .attr('class', 'tooltip')
             .style('position', 'absolute')
             .style('opacity', 0);
 
         svg
             .on('mouseover', function (event) {
-                const precision = 1;
+                const precision = 5;
                 const message = `
-        Minimum: ${q0.toFixed(precision)} %<br>
-        25th percentile: ${q1.toFixed(precision)} %<br>
-        Median: ${q2.toFixed(precision)} %<br>
-        75th percentile: ${q3.toFixed(precision)} %<br>
-        Maximum: ${q4.toFixed(precision)} %<br>
-        Inter-quartile range: ${iqr.toFixed(precision)} %<br>
-        Mean: ${mean.toFixed(precision)} %
+        Minimum: ${min.toFixed(precision)}<br>
+        25th percentile: ${q1.toFixed(precision)}<br>
+        Median: ${q2.toFixed(precision)}<br>
+        75th percentile: ${q3.toFixed(precision)}<br>
+        Maximum: ${max.toFixed(precision)}<br>
+        Inter-quartile range: ${iqr.toFixed(precision)}<br>
+        Mean: ${mean.toFixed(precision)}
         `;
                 tooltip
                     .style('opacity', 1)
@@ -89,9 +91,10 @@ export function boxPlot() {
                     .style('opacity', 0);
             })
             .on('mousemove', function (event) {
+                const [x, y] = pointer(event, this);
                 tooltip
-                    .style('left', (event.pageX + hoverOffsetX) + 'px')
-                    .style('top', (event.pageY + hoverOffsetY) + 'px');
+                    .style('left', (x + hoverOffsetX) + 'px')
+                    .style('top', (y + hoverOffsetY) + 'px');
             });
 
         const outliersWithinXLimits = outliers.filter(d => (d < xRange[1]) && (d > xRange[0]));
@@ -137,7 +140,7 @@ export function boxPlot() {
             .data([null])
             .join('line')
             .attr('id', 'lower-whisker')
-            .attr('x1', x(q0))
+            .attr('x1', x(min))
             .attr('y1', height / 2)
             .attr('x2', x(q1))
             .attr('y2', height / 2)
@@ -149,9 +152,9 @@ export function boxPlot() {
             .data([null])
             .join('line')
             .attr('id', 'lower-whisker-edge')
-            .attr('x1', x(q0))
+            .attr('x1', x(min))
             .attr('y1', height / 2 - boxWidth / 4)
-            .attr('x2', x(q0))
+            .attr('x2', x(min))
             .attr('y2', height / 2 + boxWidth / 4)
             .attr('stroke', 'black')
             .attr('stroke-width', strokeWidth);
@@ -163,7 +166,7 @@ export function boxPlot() {
             .attr('id', 'upper-whisker')
             .attr('x1', x(q3))
             .attr('y1', height / 2)
-            .attr('x2', x(q4))
+            .attr('x2', x(max))
             .attr('y2', height / 2)
             .attr('stroke', 'black')
             .attr('stroke-width', strokeWidth);
@@ -173,9 +176,9 @@ export function boxPlot() {
             .data([null])
             .join('line')
             .attr('id', 'upper-whisker-edge')
-            .attr('x1', x(q4))
+            .attr('x1', x(max))
             .attr('y1', height / 2 - boxWidth / 4)
-            .attr('x2', x(q4))
+            .attr('x2', x(max))
             .attr('y2', height / 2 + boxWidth / 4)
             .attr('stroke', 'black')
             .attr('stroke-width', strokeWidth);
@@ -203,17 +206,17 @@ export function boxPlot() {
             }
         }
 
-        if (vLine !== undefined) {
+        if (vLines !== undefined) {
             svg
-                .selectAll('#vLine')
-                .data([null])
+                .selectAll('.vLines')
+                .data(vLines)
                 .join('line')
-                .attr('id', 'vLine')
-                .attr('x1', x(vLine))
+                .attr('class', 'vLines')
+                .attr('x1', d => x(d))
                 .attr('y1', height / 2 - boxWidth / 2)
-                .attr('x2', x(vLine))
+                .attr('x2', d => x(d))
                 .attr('y2', height / 2 + boxWidth / 2)
-                .attr('stroke', 'red')
+                .attr('stroke', vLineColor)
                 .attr('stroke-width', 1.5);
         }
 
@@ -254,8 +257,12 @@ export function boxPlot() {
         return arguments.length ? ((xMax = +_), boxPlot) : xMax;
     }
 
-    boxPlot.vLine = function (_) {
-        return arguments.length ? ((vLine = +_), boxPlot) : vLine;
+    boxPlot.vLines = function (_) {
+        return arguments.length ? ((vLines = _), boxPlot) : vLines;
+    }
+
+    boxPlot.vLineColor = function (_) {
+        return arguments.length ? ((vLineColor = _), boxPlot) : vLineColor;
     }
 
     boxPlot.xLabel = function (_) {
