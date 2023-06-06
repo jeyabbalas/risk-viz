@@ -1,4 +1,12 @@
-import {slider, densityPlot, getBandwidthValues, boxPlot, beeswarmPlot, populationPrevalencePlot} from './plots';
+import {
+    slider,
+    densityPlot,
+    getBandwidthValues,
+    boxPlot,
+    beeswarmPlot,
+    populationPrevalencePlot,
+    linePlot
+} from './plots';
 
 export {
     slider,
@@ -6,5 +14,6 @@ export {
     getBandwidthValues,
     boxPlot,
     beeswarmPlot,
-    populationPrevalencePlot
+    populationPrevalencePlot,
+    linePlot
 };
