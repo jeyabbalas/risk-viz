@@ -2727,7 +2727,7 @@ function Wa(t, n) {
   return e;
 }
 function Ua() {
-  let t, n, e, r, i, o, a, l, s = "rgb(122, 255, 248, 0.7)", u = 1.5, f = 1, c = 3, h = 1.5, d = 15, _ = 15, w = !1, k = "Value";
+  let t, n, e, r, i, o, a, l, s = "rgb(122, 255, 248, 0.7)", u = 1.5, f = 1, c = 3, h = 1.5, d = 15, _ = 15, w = !1, k;
   const S = (g, x) => {
     const m = new Float64Array(g.length), v = x ** 2, A = 1e-3;
     let M = null, C = null;
@@ -2764,9 +2764,11 @@ function Ua() {
     const v = dt().domain(m).range([e.left, t - e.right]), A = S(r.map((M) => v(M)), c * 2 + h).map((M) => M + e.top + d);
     x.selectAll("g.marker").data(gn(r.length)).join("g").attr("class", "marker").attr("transform", (M) => `translate(${v(r[M])}, ${A[M]})`).each(function(M) {
       const C = Mi(this);
-      C.append("circle").attr("r", c).attr("fill", s).attr("opacity", f).attr("stroke", "black").attr("stroke-width", u);
-      const N = 7 * k.length;
-      C.append("rect").attr("x", c - N / 2).attr("y", c + 5).attr("width", N).attr("height", 20).attr("fill", "white").attr("stroke", "black").attr("stroke-width", u), C.append("text").attr("x", c - N / 2 + 5).attr("y", c + 20).attr("font-size", "12px").text(`${k}: ${r[M].toFixed(1)} %`);
+      if (C.append("circle").attr("r", c).attr("fill", s).attr("opacity", f).attr("stroke", "black").attr("stroke-width", u).append("title").text((N) => `Value:
+${r[N].toFixed(5)}`), k) {
+        const N = 7 * k.length;
+        C.append("text").attr("x", c - N / 2 + 5).attr("y", c + 20).attr("font-size", "12px").text(k[M]);
+      }
     }), w || (x.selectAll(".x-axis").data([null]).join("g").attr("class", "x-axis").attr("transform", `translate(0,${e.top})`).call(Oe(v)), a && x.selectAll(".x-axis-label").data([null]).join("text").attr("class", "x-axis-label").attr("text-anchor", "end").attr("x", t).attr("y", e.top * (2 / 3)).text(a).style("font-size", _ * (3 / 4)));
   };
   return p.width = function(g) {

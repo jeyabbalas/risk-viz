@@ -24,7 +24,7 @@ export function beeswarmPlot() {
     let plotPadding = 15;
     let fontSize = 15;
     let removeAxis = false;
-    let markerText = 'Value';
+    let markerText;
 
     /*
       ISC License
@@ -122,26 +122,20 @@ export function beeswarmPlot() {
                     .attr('fill', color)
                     .attr('opacity', opacity)
                     .attr('stroke', 'black')
-                    .attr('stroke-width', strokeWidth);
+                    .attr('stroke-width', strokeWidth)
+                    .append("title")
+                    .text((d) => `Value:\n${data[d].toFixed(5)}`);
 
-                const boxWidth = 7 * markerText.length;
+                if (markerText) {
+                    const boxWidth = 7 * markerText.length;
 
-                group
-                    .append('rect')
-                    .attr('x', radius - (boxWidth / 2))
-                    .attr('y', radius + 5)
-                    .attr('width', boxWidth)
-                    .attr('height', 20)
-                    .attr('fill', 'white')
-                    .attr('stroke', 'black')
-                    .attr('stroke-width', strokeWidth);
-
-                group
-                    .append('text')
-                    .attr('x', radius - (boxWidth / 2) + 5)
-                    .attr('y', radius + 20)
-                    .attr('font-size', '12px')
-                    .text(`${markerText}: ${data[d].toFixed(1)} %`);
+                    group
+                        .append('text')
+                        .attr('x', radius - (boxWidth / 2) + 5)
+                        .attr('y', radius + 20)
+                        .attr('font-size', '12px')
+                        .text(markerText[d]);
+                }
             });
 
         if (!removeAxis) {
