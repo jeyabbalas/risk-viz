@@ -2,6 +2,7 @@ import {
     extent,
     scaleLinear,
     mean,
+    max,
     line,
     curveBasis,
     transition,
@@ -15,6 +16,7 @@ export function densityPlot() {
     let height;
     let margin;
     let data;
+    let labels = [];
     let xMin;
     let xMax;
     let xLabel;
@@ -24,10 +26,8 @@ export function densityPlot() {
     let vLineColor = 'red';
     let numBins = 40;
     let bandwidth;
-    let color = 'rgb(122, 255, 248, 0.7)';
+    let colors = ['rgb(122, 255, 248, 0.7)'];
     let opacity = 1.0;
-    let cutoffs;
-    let cutoffColors;
     let fontSize = 15;
 
     const epanechnikov = (bandwidth) => {
@@ -49,7 +49,9 @@ export function densityPlot() {
             .attr('font-family', 'sans-serif')
             .attr('font-size', fontSize);
 
-        let xRange = extent(data);
+        let combinedData = [].concat(...data);
+
+        let xRange = extent(combinedData);
         xRange[0] = xMin ?? xRange[0];
         xRange[1] = xMax ?? xRange[1];
 
@@ -58,20 +60,20 @@ export function densityPlot() {
             .range([margin.left, width - margin.right]);
 
         const thresholds = x.ticks(numBins);
-        const density = kde(epanechnikov(bandwidth), thresholds, data);
-        const yMaxValue = yMax ?? Math.max(...density.map(d => d[1]));
+
+        const densities = data.map(d => {
+          const density = kde(epanechnikov(bandwidth), thresholds, d);
+          // close the curve at the x-axis (y=0) so color fill is complete.
+          if (density[0][1] !== 0) density.unshift([density[0][0], 0]);
+          if (density[density.length - 1][1] !== 0) density.push([density[density.length - 1][0], 0]);
+          return density;
+        });
+
+        const yMaxValue = yMax ?? max(densities, density => max(density, d => d[1]));
 
         const y = scaleLinear()
             .domain([0, yMaxValue])
             .range([height - margin.bottom, margin.top]);
-
-        // close the curve at the x-axis (y=0) so color fill is complete.
-        if (density[0][1] !== 0) {
-            density.unshift([density[0][0], 0]);
-        }
-        if (density[density.length - 1][1] !== 0) {
-            density.push([density[density.length - 1][0], 0]);
-        }
 
         const lineFunction = line()
             .curve(curveBasis)
@@ -80,74 +82,28 @@ export function densityPlot() {
 
         const t = transition().duration(1000);
 
-        let colorGradient = svg
-            .selectAll('defs')
-            .data([null])
-            .join('defs')
-            .append('linearGradient')
-            .attr('id', 'color-gradient');
-
-        if (cutoffs && cutoffColors && cutoffColors.length === cutoffs.length + 1) {
-            colorGradient
-                .append('stop')
-                .attr('offset', '0%')
-                .attr('stop-color', cutoffColors[0]);
-
-            for (let i = 0; i < cutoffs.length; i++) {
-                let cutoffPercentage = (((cutoffs[i] - xRange[0]) / (xRange[1] - xRange[0])) * 100.0)
-                    .toFixed(1);
-
-                if (cutoffPercentage < 0) {
-                    cutoffPercentage = 0.0;
-                }
-
-                if (cutoffPercentage > 100) {
-                    cutoffPercentage = 100.0;
-                }
-
-                colorGradient
-                    .append('stop')
-                    .attr('offset', `${cutoffPercentage}%`)
-                    .attr('stop-color', cutoffColors[i]);
-
-                colorGradient
-                    .append('stop')
-                    .attr('offset', `${cutoffPercentage}%`)
-                    .attr('stop-color', cutoffColors[i + 1]);
-            }
-
-            colorGradient
-                .append('stop')
-                .attr('offset', '100%')
-                .attr('stop-color', cutoffColors[cutoffColors.length - 1]);
-        } else {
-            colorGradient
-                .append('stop')
-                .attr('offset', '100%')
-                .attr('stop-color', color);
-        }
-
         svg
-            .selectAll('path')
-            .data([null])
-            .join(
-                (enter) =>
-                    enter
-                        .append('path')
-                        .attr('stroke', 'black')
-                        .attr('stroke-width', 1.5)
-                        .attr('stroke-linejoin', 'round')
-                        .attr('opacity', opacity)
-                        .attr('d', lineFunction(density))
-                        .style('fill', 'url(#color-gradient)'),
-                (update) =>
-                    update.call((update) =>
-                        update
-                            .transition(t)
-                            .attr('d', lineFunction(density))
-                    ),
-                (exit) => exit.remove()
-            );
+          .selectAll('path')
+          .data(densities)
+          .join(
+            (enter) =>
+              enter
+                .append('path')
+                .attr('stroke', 'black')
+                .attr('stroke-width', 1.5)
+                .attr('stroke-linejoin', 'round')
+                .attr('stroke-opacity', 1.0)
+                .attr('fill-opacity', opacity)
+                .attr('d', d => lineFunction(d))
+                .style('fill', (d, i) => colors[i]),
+            (update) =>
+              update.call((update) =>
+                update
+                  .transition(t)
+                  .attr('d', d => lineFunction(d))
+              ),
+            (exit) => exit.remove()
+          );
 
         svg
             .selectAll('.y-axis')
@@ -213,6 +169,30 @@ export function densityPlot() {
             .attr('text-anchor', 'middle')
             .attr('x', width / 2)
             .attr('y', margin.top / 2);
+
+      if (labels.length > 1)  {
+          const longestLabelLength = labels.reduce((max, str) => Math.max(max, str.length), 0);
+
+          const legend = svg.selectAll(".legend")
+              .data(colors)
+              .enter().append('g')
+              .attr('class', 'legend')
+              .attr('transform', function(d, i) { return `translate(-${margin.right + longestLabelLength * fontSize/3}, ${ ((i * 25) + margin.top + 30) })`; });
+
+            legend.append('rect')
+              .attr('x', width - margin.right)
+              .attr('width', 18)
+              .attr('height', 18)
+              .attr('stroke', 'black')
+              .style('fill', function(d, i) { return colors[i]; });
+
+            legend.append("text")
+              .attr("x", width - margin.right + 24)
+              .attr("y", 9)
+              .attr("dy", ".35em")
+              .style("text-anchor", "start")
+              .text(function(d, i) { return labels[i]; });
+      }
     }
 
     densityPlot.width = function (_) {
@@ -229,6 +209,10 @@ export function densityPlot() {
 
     densityPlot.data = function (_) {
         return arguments.length ? ((data = _), densityPlot) : data;
+    }
+
+    densityPlot.labels = function (_) {
+      return arguments.length ? ((labels = _), densityPlot) : labels;
     }
 
     densityPlot.xMin = function (_) {
@@ -267,20 +251,12 @@ export function densityPlot() {
         return arguments.length ? ((bandwidth = +_), densityPlot) : bandwidth;
     }
 
-    densityPlot.color = function (_) {
-        return arguments.length ? ((color = _), densityPlot) : color;
+    densityPlot.colors = function (_) {
+        return arguments.length ? ((colors = _), densityPlot) : colors;
     }
 
     densityPlot.opacity = function (_) {
         return arguments.length ? ((opacity = +_), densityPlot) : opacity;
-    }
-
-    densityPlot.cutoffs = function (_) {
-        return arguments.length ? ((cutoffs = _), densityPlot) : cutoffs;
-    }
-
-    densityPlot.cutoffColors = function (_) {
-        return arguments.length ? ((cutoffColors = _), densityPlot) : cutoffColors;
     }
 
     densityPlot.fontSize = function (_) {
